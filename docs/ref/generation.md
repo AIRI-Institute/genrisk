@@ -1,0 +1,2 @@
+# Generative models
+::: genrisk.generation

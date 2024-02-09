@@ -1,0 +1,41 @@
+site_name: GenRisk documentation
+docs_dir: docs
+theme:
+    name: material
+markdown_extensions:
+    - markdown_include.include
+    - extra
+    - tables
+    - mdx_math:
+        enable_dollar_delimiter: True
+    - fenced_code
+    - pymdownx.highlight:
+        use_pygments: true
+    - pymdownx.superfences
+extra_javascript:
+    - https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+plugins:
+    - search
+    - mknotebooks
+    - mkdocstrings:
+        default_handler: python
+        handlers:
+            python:
+                options:
+                    show_source: false
+                    show_category_heading: false
+                    inherited_members: false
+    - print-site:
+        add_to_navigation: true
+        toc_depth: 1
+
+nav:
+    - Getting started: 
+        - GenRisk: 'index.md'
+    - Examples:
+        - Worst-case risk on simple data: 'examples/worst_case_risk.ipynb'
+        - Generaion of time series data: 'examples/data_generation.ipynb'
+        - Comparing two models by the worst-case risk: 'examples/comparing_worst_case_risk.ipynb'
+    - Reference: 
+        - Conditional shift model: 'ref/shift.md'
+        - Generative models: 'ref/generation.md'
