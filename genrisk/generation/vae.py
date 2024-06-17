@@ -1,11 +1,15 @@
 import torch
-from torch.optim import Adam
 from pytorch_lightning import LightningModule
+from torch.optim import Adam
 
 
 class VAEModule(LightningModule):
     def __init__(
-        self, enc, dec, latent_dim, lr,
+        self,
+        enc,
+        dec,
+        latent_dim,
+        lr,
     ):
         super().__init__()
         self.enc = enc
@@ -14,8 +18,8 @@ class VAEModule(LightningModule):
         self.lr = lr
 
     def neg_elbo(self, ts, rec_ts, sigma, mu):
-        likelihood = -((rec_ts - ts)**2).sum((1,2))
-        kld = -0.5 * (1 + (sigma**2 + 1e-15).log() - mu**2 - sigma**2).sum((1,2))
+        likelihood = -((rec_ts - ts) ** 2).sum((1, 2))
+        kld = -0.5 * (1 + (sigma**2 + 1e-15).log() - mu**2 - sigma**2).sum((1, 2))
         elbo = likelihood - kld
         return -elbo.mean()
 
