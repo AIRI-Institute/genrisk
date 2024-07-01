@@ -109,7 +109,7 @@ class BaseModelHandler(ABC):
         """Predict method to be implemented by subclasses."""
         return
 
-    def save_model(self, file_name, work_dir):
+    def save_model(self, file_name, work_dir="forcasting_models"):
         """Save model to file, might need to be overridden depending on model specifics."""
         self.name = file_name
         self.work_dir = work_dir
@@ -162,17 +162,42 @@ class BaseModelHandler(ABC):
         future_targets = []
 
         for i in range(0, len(Y) - input_size - horizon + 1, horizon):
-            print(i)
-            past_target = Y[i : i + input_size]
-            future_target_original = Y[i + input_size : i + input_size + horizon]
+            need_to_break = False
+            if not isinstance(self.model, AutoARIMA):
+                past_target = Y[i : i + input_size]
+                future_target_original = Y[i + input_size : i + input_size + horizon]
 
-            future_exog = X[i : i + input_size + horizon]
-            future_pred = self.model.predict(
-                horizon if horizon <= len(future_exog) else len(future_exog),
-                series=past_target,
-                future_covariates=future_exog,
-                verbose=False,
-            )
+                future_exog = X[i : i + input_size + horizon]
+                future_pred = self.model.predict(
+                    horizon if horizon <= len(future_exog) else len(future_exog),
+                    series=past_target,
+                    future_covariates=future_exog,
+                    verbose=False,
+                )
+            else:
+                end_index = i + input_size + horizon
+                print(end_index, len(Y))
+
+                if end_index + horizon > len(Y):
+                    end_index = len(Y)
+                    need_to_break = True
+
+                print('new',end_index, len(Y))
+
+                future_target_original = Y[i + input_size:end_index]
+                future_exog = X[i:end_index]
+
+                if need_to_break:
+                    print(future_exog)
+
+
+                prediction_horizon = min(horizon, len(future_exog) - input_size)
+                print('----',prediction_horizon,len(future_exog))
+                future_pred = self.model.predict(
+                    prediction_horizon,
+                    future_covariates=future_exog,
+                    verbose=False
+                )
 
             if self.scaler is not None:
                 future_pred_values = self.scaler.inverse_transform(future_pred).values()
@@ -189,6 +214,9 @@ class BaseModelHandler(ABC):
 
             future_preds.append(future_pred_values)
             future_targets.append(future_target_values)
+
+            if need_to_break:
+                break
 
         return np.array(future_preds).reshape(-1), np.array(future_targets).reshape(-1)
 
@@ -349,6 +377,4 @@ class TFTModelHandler(BaseModelHandler):
             future_covariates=self.train_cov[-self.input_chunk_length :].append(self.test_cov),
             verbose=False,
         ).pd_dataframe()
-    
-    def save_model(self, work_dir="forcasting_models", file_name="tft"):
-        return super().save_model(file_name, work_dir)
+
