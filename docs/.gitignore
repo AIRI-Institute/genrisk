@@ -2,3 +2,4 @@
 **/generation_models/
 **/*.pkl
 **/__pycache__/
+**/todo.md
