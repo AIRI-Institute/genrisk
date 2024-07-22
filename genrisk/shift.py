@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.model_selection import KFold
 from sklearn.ensemble import GradientBoostingRegressor
+from quantile_forest import RandomForestQuantileRegressor
 from tqdm.auto import tqdm
 
 
@@ -39,11 +40,7 @@ class ConditionalShift:
         expectation_model: object = None,
         quantile_model: object = None,
         verbose=False,
-<<<<<<< HEAD
         mode="rf_quantiles",
-=======
-        mode="default",
->>>>>>> refs/heads/main
     ):
         """
         Args:
@@ -72,11 +69,7 @@ class ConditionalShift:
             self.expectation_model = GradientBoostingRegressor()
         if quantile_model is None:
             if len(immutable_columns):
-<<<<<<< HEAD
                 if mode == "rf_quantiles":
-=======
-                if mode == "default":
->>>>>>> refs/heads/main
                     self.quantile_model = RandomForestQuantileRegressor()
                 elif mode == "gbr_quantiles":
                     self.quantile_models = [
@@ -116,11 +109,7 @@ class ConditionalShift:
             mu_train = self.expectation_model.predict(X_mi.iloc[train])
             self.mu[test] = self.expectation_model.predict(X_mi.iloc[test])
 
-<<<<<<< HEAD
             if self.mode == "rf_quantiles":
-=======
-            if self.mode == "default":
->>>>>>> refs/heads/main
                 self._fit_default(X_i, mu_train, train, test)
             elif self.mode == "gbr_quantiles":
                 self._fit_gbr_quantiles(X_i, mu_train, train, test)
