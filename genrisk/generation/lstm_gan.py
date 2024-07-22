@@ -1,6 +1,6 @@
-import pandas as pd
 import torch
 import torch.nn as nn
+import pandas as pd
 
 from genrisk.generation.base import TorchGenerator
 from genrisk.generation.gan import GANModule
@@ -9,9 +9,7 @@ from genrisk.generation.gan import GANModule
 class _LSTMGenerator(nn.Module):
     def __init__(self, latent_dim, condition_dim, hidden_dim, target_dim, num_layers):
         super().__init__()
-        self.rnn = nn.LSTM(
-            latent_dim + condition_dim, hidden_dim, num_layers, batch_first=True
-        )
+        self.rnn = nn.LSTM(latent_dim + condition_dim, hidden_dim, num_layers, batch_first=True)
         self.projection = nn.Linear(hidden_dim, target_dim)
 
     def forward(self, z, cond):
@@ -24,9 +22,7 @@ class _LSTMGenerator(nn.Module):
 class _LSTMDiscriminator(nn.Module):
     def __init__(self, target_dim, condition_dim, hidden_dim, num_layers):
         super().__init__()
-        self.rnn = nn.LSTM(
-            target_dim + condition_dim, hidden_dim, num_layers, batch_first=True
-        )
+        self.rnn = nn.LSTM(target_dim + condition_dim, hidden_dim, num_layers, batch_first=True)
         self.projection = nn.Linear(hidden_dim, 1)
 
     def forward(self, target, cond):
@@ -38,22 +34,20 @@ class _LSTMDiscriminator(nn.Module):
 
 class LSTMGAN(TorchGenerator):
     """GAN generator based on LSTM module."""
-
     def __init__(
-        self,
-        target_columns: list[str],
-        conditional_columns: list[str],
-        window_size: int = 10,
-        batch_size: int = 16,
-        num_epochs: int = 1,
-        verbose: bool = False,
-        hidden_dim: int = 16,
-        latent_dim: int = 4,
-        num_disc_steps: int = 1,
-        num_layers: int = 1,
-        lr: float = 0.01,
-        loss_type="Wasseerstein",
-    ):
+            self,
+            target_columns: list[str],
+            conditional_columns: list[str],
+            window_size: int=10,
+            batch_size: int=16,
+            num_epochs: int=1,
+            verbose: bool=False,
+            hidden_dim: int=16,
+            latent_dim: int=4,
+            num_disc_steps: int=1,
+            num_layers: int=1,
+            lr: float=0.01,
+        ):
         """
         Args:
             target_columns (list): A list of columns for generation.
@@ -64,7 +58,7 @@ class LSTMGAN(TorchGenerator):
             verbose (bool): An indicator to show the progressbar in training.
             hidden_dim (int): The hidden dimensionality of LSTM module.
             latent_dim (int): The dimensionality of latent space in GAN.
-            num_disc_steps (int): The number of steps to train a discriminator
+            num_disc_steps (int): The number of steps to train a discriminator 
                 for one step of training a generator.
             num_layers (int): The number of layers in LSTM module.
             lr (int): The learning rate to train the generator.
@@ -82,13 +76,16 @@ class LSTMGAN(TorchGenerator):
         self.num_disc_steps = num_disc_steps
         self.num_layers = num_layers
         self.lr = lr
-        self.loss_type = loss_type
-        self._create_model()
 
-    def _create_model(self):
+    def fit(self, data: pd.DataFrame):
+        """Fit the generator
+        
+        Args:
+            data (pd.DataFrame): A dataframe with time series data.
+        """
         gen = _LSTMGenerator(
-            latent_dim=self.latent_dim,
-            condition_dim=len(self.conditional_columns),
+            latent_dim=self.latent_dim, 
+            condition_dim=len(self.conditional_columns), 
             hidden_dim=self.hidden_dim,
             target_dim=len(self.target_columns),
             num_layers=self.num_layers,
@@ -105,13 +102,5 @@ class LSTMGAN(TorchGenerator):
             latent_dim=self.latent_dim,
             lr=self.lr,
             num_disc_steps=self.num_disc_steps,
-            loss_type=self.loss_type,
         )
-
-    def fit(self, data: pd.DataFrame):
-        """Fit the generator
-
-        Args:
-            data (pd.DataFrame): A dataframe with time series data.
-        """
         super().fit(data)
