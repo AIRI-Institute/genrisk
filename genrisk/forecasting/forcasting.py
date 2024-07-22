@@ -13,6 +13,13 @@ from typing import Tuple
 import pandas as pd
 from darts import TimeSeries
 from darts.dataprocessing.transformers import Scaler
+import matplotlib.pyplot as plt
+from sklearn.model_selection import ParameterGrid
+from typing import Tuple, Dict
+from pmdarima import auto_arima
+
+plt.style.use('default')
+plt.rcParams['axes.grid'] = False
 
 
 my_stopper = EarlyStopping(
@@ -54,11 +61,11 @@ class BaseModelHandler(ABC):
     def _get_darts_format(self):
         split_idx = int(len(self.dataset) * (1 - self.test_percent))
 
-        df_train = self.dataset[:split_idx]
-        df_test = self.dataset[split_idx:]
+        self.df_train = self.dataset[:split_idx]
+        self.df_test = self.dataset[split_idx:]
 
-        self.train_ts, self.train_cov = self.process_dataset(df_train)
-        self.test_ts, self.test_cov = self.process_dataset(df_test)
+        self.train_ts, self.train_cov = self.process_dataset(self.df_train)
+        self.test_ts, self.test_cov = self.process_dataset(self.df_test)
     
     def process_dataset(
         self, df: pd.DataFrame
@@ -85,7 +92,7 @@ class BaseModelHandler(ABC):
         return ts, ts_cov
     
     def get_true_test(self):
-        return self.test_ts.pd_dataframe()
+        return self.scaler.inverse_transform(self.test_ts).pd_dataframe() 
 
     def ensure_directory(self, path):
         """Ensures that the directory exists."""
@@ -96,16 +103,16 @@ class BaseModelHandler(ABC):
         """Training method to be implemented by each model type handler."""
         pass
 
-    def load_model(self):
+    def load_model(self, file_name, work_dir="forcasting_models"):
         """Load model from file, to be possibly overridden by subclasses with specifics."""
         try:
-            model_path = os.path.join(self.work_dir, f"{self.name}.pkl")
+            model_path = os.path.join(work_dir, f"{file_name}.pkl")
             self.model = self.model.load(model_path)
         except FileNotFoundError:
             raise Exception("Model not found. Please train the model first.")
 
     @abstractmethod
-    def predict(self, series, horizon): #forecast
+    def forecast(self, series, horizon): #forecast
         """Predict method to be implemented by subclasses."""
         return
 
@@ -162,7 +169,7 @@ class BaseModelHandler(ABC):
         future_targets = []
 
         for i in range(0, len(Y) - input_size - horizon + 1, horizon):
-            need_to_break = False
+
             if not isinstance(self.model, AutoARIMA):
                 past_target = Y[i : i + input_size]
                 future_target_original = Y[i + input_size : i + input_size + horizon]
@@ -175,28 +182,15 @@ class BaseModelHandler(ABC):
                     verbose=False,
                 )
             else:
-                end_index = i + input_size + horizon
-                print(end_index, len(Y))
+                past_target = Y[i : i + input_size]
+                future_target_original = Y[i + input_size : i + input_size + horizon]
 
-                if end_index + horizon > len(Y):
-                    end_index = len(Y)
-                    need_to_break = True
-
-                print('new',end_index, len(Y))
-
-                future_target_original = Y[i + input_size:end_index]
-                future_exog = X[i:end_index]
-
-                if need_to_break:
-                    print(future_exog)
-
-
-                prediction_horizon = min(horizon, len(future_exog) - input_size)
-                print('----',prediction_horizon,len(future_exog))
+                future_exog = X[: i + input_size + horizon]
                 future_pred = self.model.predict(
-                    prediction_horizon,
+                    horizon if horizon <= len(future_exog) else len(future_exog),
+                    series=past_target,
                     future_covariates=future_exog,
-                    verbose=False
+                    verbose=False,
                 )
 
             if self.scaler is not None:
@@ -215,48 +209,79 @@ class BaseModelHandler(ABC):
             future_preds.append(future_pred_values)
             future_targets.append(future_target_values)
 
-            if need_to_break:
-                break
-
         return np.array(future_preds).reshape(-1), np.array(future_targets).reshape(-1)
 
 
+# может надо добавить вариант с гридсерчем и без
 class ARIMAModelHandler(BaseModelHandler):
     def __init__(self, dataset, test_percent, forecasting_horizont, target_columns, conditional_columns, params=None):
         super().__init__(dataset, test_percent, forecasting_horizont, target_columns, conditional_columns)
         if params is None:
             params = {
-                "start_p": 0,
-                "max_p": 2,
-                "max_d": 1,
-                "start_q": 0,
-                "max_q": 2,
-                "start_P": 0,
-                "max_P": 2,
-                "max_D": 1,
-                "start_Q": 0,
-                "max_Q": 2,
+                "p": (0, 2),
+                "d": (0, 1),
+                "q": (0, 2),
+                "P": (0, 2),
+                "D": (0, 1),
+                "Q": (0, 2),
+                "m": 7,  # Seasonal period
                 "seasonal": True,
-                "m": 7,
-                "trace": True,
-                "error_action": "ignore",  #'warn',
-                "n_fits": 500,
-                "stepwise": True,
-                # 'scoring': 'mse',
             }
 
         self.params = params
-        self.model = AutoARIMA(**params)
+        self.best_params = None
+        self.best_score = float('inf')
+        self.model = None
+        self.val_size = int(len(self.train_ts) * 0.1)
+        self.train_data, self.val_data = self.df_train[:-self.val_size][target_columns], self.df_train[-self.val_size:][target_columns]
+        self.train_cov_data, self.val_cov_data = self.df_train[:-self.val_size][conditional_columns], self.df_train[-self.val_size:][conditional_columns]
+
+    def grid_search(self):
+        self.model = auto_arima(
+            self.train_data,
+            seasonal=self.params['seasonal'],
+            exogenous=self.train_cov_data,
+            m=self.params['m'],
+            start_p=self.params['p'][0], max_p=self.params['p'][1],
+            start_d=self.params['d'][0], max_d=self.params['d'][1],
+            start_q=self.params['q'][0], max_q=self.params['q'][1],
+            start_P=self.params['P'][0], max_P=self.params['P'][1],
+            start_D=self.params['D'][0], max_D=self.params['D'][1],
+            start_Q=self.params['Q'][0], max_Q=self.params['Q'][1],
+            trace=True,
+            error_action='ignore',
+            suppress_warnings=True,
+            stepwise=True,
+        )
+        self.best_params = self.model.get_params()
+        self.best_score = self.model.aic()
+        return self.best_params, self.best_score
+
+    def _evaluate(self, pred, true, k):
+        residuals = pred - true
+        rss = np.sum(residuals ** 2)
+        n = len(true)
+        aic = n * np.log(rss / n) + 2 * k
+        return aic
 
     def train_model(self):
-        self.model.fit(self.train_ts, future_covariates=self.train_cov)
+        if self.model is None:
+            param, score = self.grid_search()
+
+        print(param)
+        self.train_data, self.val_data = self.train_ts[:-self.val_size], self.train_ts[-self.val_size:]
+        self.train_cov_data, self.val_cov_data = self.train_cov[:-self.val_size], self.train_cov[-self.val_size:]
+
+        self.model = ARIMA(p=param['order'][0], d=param['order'][1], q=param['order'][2], seasonal_order=(param['seasonal_order'][0], param['seasonal_order'][1], param['seasonal_order'][2], param['seasonal_order'][3]))
+        self.model.fit(self.train_data, future_covariates = self.train_cov_data)
         self.trained = True
 
-    def predict(self, all_test=True):
+    def forecast(self, all_test=True):
         if not self.trained:
             self.load_model()
         pred_len = len(self.test_cov) if all_test else self.forecasting_horizont
-        return self.model.predict(pred_len, future_covariates=self.test_cov, verbose=False).pd_dataframe()
+        future_pred = self.model.predict(pred_len, series = self.train_data, future_covariates=self.train_cov.append(self.test_cov), verbose=False)
+        return self.scaler.inverse_transform(future_pred).pd_dataframe()
     
     def save_model(self, work_dir="forcasting_models", file_name="arima"):
         return super().save_model(file_name, work_dir)
@@ -304,16 +329,17 @@ class LSTMModelHandler(BaseModelHandler):
         )
         self.trained = True
 
-    def predict(self, all_test=True):
+    def forecast(self, all_test=True):
         if not self.trained:
             self.load_model()
         pred_len = len(self.test_cov) if all_test else self.forecasting_horizont
-        return self.model.predict(
+        future_pred = self.model.predict(
             pred_len,
             series=self.train_ts,
             future_covariates=self.train_cov[-self.input_chunk_length :].append(self.test_cov),
             verbose=False,
-        ).pd_dataframe()
+        )
+        return self.scaler.inverse_transform(future_pred).pd_dataframe()
     
     def save_model(self, work_dir="forcasting_models", file_name="lstm"):
         return super().save_model(file_name, work_dir)
@@ -367,14 +393,15 @@ class TFTModelHandler(BaseModelHandler):
         )
         self.trained = True
 
-    def predict(self, all_test=True):
+    def forecast(self, all_test=True):
         if not self.trained:
             self.load_model()
         pred_len = len(self.test_cov) if all_test else self.forecasting_horizont
-        return self.model.predict(
+        future_pred = self.model.predict(
             pred_len,
             series=self.train_ts,
             future_covariates=self.train_cov[-self.input_chunk_length :].append(self.test_cov),
             verbose=False,
-        ).pd_dataframe()
+        )
+        return self.scaler.inverse_transform(future_pred).pd_dataframe()
 

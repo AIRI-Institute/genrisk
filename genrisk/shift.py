@@ -35,19 +35,6 @@ def ReLU(x):
 
 
 def worst_case_risk(mu, eta, alpha, h, error):
-    # error = error.detach().cpu().numpy()
-    # components = ReLU(mu - eta) / (1 - alpha) + eta + h * (error - mu) / (1 - alpha)
-    # negative_indices = np.where(components < 0)[0]  # Индексы отрицательных значений
-
-    # if negative_indices.size > 0:
-    #     print("Отрицательные значения найдены в следующих индексах:")
-    #     for index in negative_indices:
-    #         relu_component = ReLU(mu[index] - eta[index]) / (1 - alpha)
-    #         error_component = h[index] * (error[index] - mu[index]) / (1 - alpha)
-    #         total_value = relu_component + eta[index] + error_component
-    #         print(f"Индекс: {index}, ReLU компонент: {relu_component}, Eta: {eta[index]}, Ошибка компонент: {error_component}, Итоговое значение: {total_value}")
-
-    # return components
     # Eq. 5 in the paper.
     result = ReLU(mu - eta) / (1 - alpha) + eta + h * (error - mu) / (1 - alpha)
     return result[result > 0]
@@ -63,7 +50,7 @@ class ConditionalShift:
         expectation_model: object = None,
         quantile_model: object = None,
         verbose=False,
-        mode="default",
+        mode="rf_quantiles",
     ):
         """
         Initialize the ConditionalShift model with specified configurations,
@@ -108,7 +95,7 @@ class ConditionalShift:
         self.expectation_model = expectation_model or GradientBoostingRegressor()
         if quantile_model is None:
             if len(immutable_columns):
-                if mode == "default":
+                if mode == "rf_quantiles":
                     self.quantile_model = RandomForestQuantileRegressor()
                 elif mode == "gbr_quantiles":
                     self.quantile_models = [
@@ -137,7 +124,7 @@ class ConditionalShift:
             mu_train = self.expectation_model.predict(X_mi.iloc[train])
             self.mu[test] = self.expectation_model.predict(X_mi.iloc[test])
 
-            if self.mode == "default":
+            if self.mode == "rf_quantiles":
                 self._fit_default(X_i, mu_train, train, test)
             elif self.mode == "gbr_quantiles":
                 self._fit_gbr_quantiles(X_i, mu_train, train, test)

@@ -15,15 +15,15 @@ class GANModule(LightningModule):
         self.loss_type = loss_type
 
     def disc_loss(self, real_logits, fake_logits):
-        if self.loss_type == "Usual": #BCE
+        if self.loss_type == "BCE": 
             real_is_real = torch.log(torch.sigmoid(real_logits) + 1e-10)
             fake_is_fake = torch.log(1 - torch.sigmoid(fake_logits) + 1e-10)
             return -(real_is_real + fake_is_fake).mean() / 2
-        if self.loss_type == "Wasseerstein": #Wasserstain посмотерть клипинг
+        if self.loss_type == "Wasseerstein":
             return fake_logits.mean() - real_logits.mean()
 
     def gen_loss(self, fake_logits):
-        if self.loss_type == "Usual":
+        if self.loss_type == "BCE":
             fake_is_real = torch.log(torch.sigmoid(fake_logits) + 1e-10)
             return -fake_is_real.mean()
         if self.loss_type == "Wasseerstein":
