@@ -23,4 +23,3 @@ class TestOnSyntheticData:
 
         assert len(fakes) == 10
         assert fakes[0].shape == self.data.shape
-        
