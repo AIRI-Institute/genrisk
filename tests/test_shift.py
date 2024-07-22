@@ -14,3 +14,4 @@ def test_conditional_shift():
     assert shift_model.risk
     assert shift_model.ub_risk
     assert shift_model.lb_risk
+    
