@@ -20,4 +20,6 @@ class TestOnSyntheticData:
         gen = model(target_columns=['X1', 'X2'], conditional_columns=['X3', 'y'])
         gen.fit(self.data)
         fakes = gen.sample(self.data, n_samples=10)
-        
+
+        assert len(fakes) == 10
+        assert fakes[0].shape == self.data.shape

@@ -10,3 +10,7 @@ def test_conditional_shift():
     )
     error = pd.Series(np.random.randn(1000))
     shift_model.fit(X, error)
+    assert len(shift_model.mask) == len(X)
+    assert shift_model.risk
+    assert shift_model.ub_risk
+    assert shift_model.lb_risk
