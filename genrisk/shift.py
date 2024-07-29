@@ -4,6 +4,9 @@ from sklearn.ensemble import GradientBoostingRegressor
 from quantile_forest import RandomForestQuantileRegressor
 from tqdm.auto import tqdm
 
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module='sklearn.base')
+
 
 class EmpiricalQuantile:
     def __init__(self, alpha):
@@ -61,12 +64,13 @@ class ConditionalShift:
         assert len(mutable_columns), "List of mutable variables is empty."
         self.quantile_model = quantile_model
         self.expectation_model = expectation_model
-        self.alpha = alpha
+        self.alpha_space = list(alpha_space)
         self.mutable_columns = mutable_columns
         self.immutable_columns = immutable_columns
         self.cv = cv
-        if expectation_model is None:
-            self.expectation_model = GradientBoostingRegressor()
+        self.verbose = verbose
+        self.mode = mode
+        self.expectation_model = expectation_model or GradientBoostingRegressor()
         if quantile_model is None:
             if len(immutable_columns):
                 if mode == "rf_quantiles":
@@ -77,7 +81,9 @@ class ConditionalShift:
                         for alpha in self.alpha_space
                     ]
             else:
-                self.quantile_model = EmpiricalQuantile(alpha=alpha)
+                self.quantile_model = [
+                    EmpiricalQuantile(alpha=alpha) for alpha in self.alpha_space
+                ]
         self.verbose = verbose
 
     def fit(self, X, error):
@@ -97,15 +103,18 @@ class ConditionalShift:
             error (pd.Series): Series with errors of a target model.
         """
         X_mi = X[self.mutable_columns + self.immutable_columns]
-        if len(self.immutable_columns):
-            X_i = X[self.immutable_columns]
-        else:
-            X_i = X_mi
-        self.mask = np.zeros_like(error).astype('bool')
-        self.eta = np.zeros_like(error)
+        X_i = X[self.immutable_columns] if self.immutable_columns else X_mi
+
+        self.results = []
+
+        self.mask = np.zeros((error.shape[0], len(self.alpha_space)), dtype=bool)
+        self.eta = np.zeros((error.shape[0], len(self.alpha_space)))
         self.mu = np.zeros_like(error)
-        for train, test in tqdm(KFold(n_splits=self.cv).split(X_mi), total=self.cv, disable=not self.verbose):
-            self.expectation_model.fit(X_mi.iloc[train], error.iloc[train])
+
+        for train, test in tqdm(
+            KFold(n_splits=self.cv).split(X_mi), total=self.cv, disable=not self.verbose
+        ):
+            self.expectation_model.fit(X_mi.iloc[train], error[train])
             mu_train = self.expectation_model.predict(X_mi.iloc[train])
             self.mu[test] = self.expectation_model.predict(X_mi.iloc[test])
 

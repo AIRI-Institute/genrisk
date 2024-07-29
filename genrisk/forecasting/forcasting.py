@@ -31,13 +31,15 @@ my_stopper = EarlyStopping(
 
 
 class BaseModelHandler(ABC):
-    def __init__(self, dataset, 
+    def __init__(self, train, test,
                  test_percent, 
                  forecasting_horizont, 
                  target_columns,
                  conditional_columns):
         
-        self.dataset = dataset
+        self.df_train = train
+        self.df_test = test
+
         self.test_percent = test_percent
         self.forecasting_horizont = forecasting_horizont
         self.target_columns = target_columns
@@ -59,11 +61,6 @@ class BaseModelHandler(ABC):
         }
     
     def _get_darts_format(self):
-        split_idx = int(len(self.dataset) * (1 - self.test_percent))
-
-        self.df_train = self.dataset[:split_idx]
-        self.df_test = self.dataset[split_idx:]
-
         self.train_ts, self.train_cov = self.process_dataset(self.df_train)
         self.test_ts, self.test_cov = self.process_dataset(self.df_test)
     
@@ -214,8 +211,8 @@ class BaseModelHandler(ABC):
 
 # может надо добавить вариант с гридсерчем и без
 class ARIMAModelHandler(BaseModelHandler):
-    def __init__(self, dataset, test_percent, forecasting_horizont, target_columns, conditional_columns, params=None):
-        super().__init__(dataset, test_percent, forecasting_horizont, target_columns, conditional_columns)
+    def __init__(self, train, test, test_percent, forecasting_horizont, target_columns, conditional_columns, params=None):
+        super().__init__(train, test, test_percent, forecasting_horizont, target_columns, conditional_columns)
         if params is None:
             params = {
                 "p": (0, 2),
@@ -283,21 +280,25 @@ class ARIMAModelHandler(BaseModelHandler):
         future_pred = self.model.predict(pred_len, series = self.train_data, future_covariates=self.train_cov.append(self.test_cov), verbose=False)
         return self.scaler.inverse_transform(future_pred).pd_dataframe()
     
-    def save_model(self, work_dir="forcasting_models", file_name="arima"):
+    def save_model(self, file_name="arima", work_dir="forcasting_models"):
         return super().save_model(file_name, work_dir)
+    
+    def load_model(self, file_name="arima", work_dir="forcasting_models"):
+        self.model = ARIMA()
+        return super().load_model(file_name, work_dir)
 
 
 class LSTMModelHandler(BaseModelHandler):
     def __init__(
         self,
-        dataset, test_percent, forecasting_horizont, target_columns, conditional_columns,
+        train, test, test_percent, forecasting_horizont, target_columns, conditional_columns,
         input_chunk_length=100,
         n_rnn_layers=1,
         n_epochs=20,
         dropout=0.0,
         
     ):
-        super().__init__(dataset, test_percent, forecasting_horizont, target_columns, conditional_columns)
+        super().__init__(train, test, test_percent, forecasting_horizont, target_columns, conditional_columns)
         self.input_chunk_length = input_chunk_length
         self.n_rnn_layers = n_rnn_layers
         self.n_epochs = n_epochs
@@ -341,14 +342,17 @@ class LSTMModelHandler(BaseModelHandler):
         )
         return self.scaler.inverse_transform(future_pred).pd_dataframe()
     
-    def save_model(self, work_dir="forcasting_models", file_name="lstm"):
+    def save_model(self, file_name="lstm", work_dir="forcasting_models"):
         return super().save_model(file_name, work_dir)
+    
+    def load_model(self, file_name="lstm", work_dir="forcasting_models"):
+        return super().load_model(file_name, work_dir)
   
 
 class TFTModelHandler(BaseModelHandler):
     def __init__(
         self,
-        dataset, test_percent, forecasting_horizont, target_columns, conditional_columns,
+        train, test, test_percent, forecasting_horizont, target_columns, conditional_columns,
         input_chunk_length=100,
         forcasting_horizon=24,
         n_epochs=20,
@@ -356,7 +360,7 @@ class TFTModelHandler(BaseModelHandler):
         work_dir="forcasting_models",
         name="tft",
     ):
-        super().__init__(dataset, test_percent, forecasting_horizont, target_columns, conditional_columns)
+        super().__init__(train, test, test_percent, forecasting_horizont, target_columns, conditional_columns)
         self.input_chunk_length = input_chunk_length
         self.forcasting_horizon = forcasting_horizon
         self.n_epochs = n_epochs
@@ -405,3 +409,9 @@ class TFTModelHandler(BaseModelHandler):
         )
         return self.scaler.inverse_transform(future_pred).pd_dataframe()
 
+    def save_model(self, file_name="tft", work_dir="forcasting_models"):
+        return super().save_model(file_name, work_dir)
+    
+    def load_model(self, file_name="tft", work_dir="forcasting_models"):
+        return super().load_model(file_name, work_dir)
+  

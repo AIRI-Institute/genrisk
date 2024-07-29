@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 
 class GANModule(LightningModule):
     def __init__(
-        self, gen, disc, latent_dim, lr, num_disc_steps,
+        self, gen, disc, latent_dim, lr, num_disc_steps, loss_type,
     ):
         super().__init__()
         self.gen = gen
@@ -14,6 +14,7 @@ class GANModule(LightningModule):
         self.automatic_optimization = False
         self.lr = lr
         self.num_disc_steps = num_disc_steps
+        self.loss_type = loss_type
 
     def disc_loss(self, real_logits, fake_logits):
         if self.loss_type == "BCE": 

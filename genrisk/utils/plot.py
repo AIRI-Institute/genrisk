@@ -26,7 +26,7 @@ def plot_fake_data(result_df, gen, col, n_samples=3):
 
 
 def plot_pair_wcr(
-    ans,
+    ans_values,
     shift_model,
     test_ts,
     result_df,
@@ -49,8 +49,7 @@ def plot_pair_wcr(
         Returns:
         None: This function plots the WCR and does not return any value.
     """
-    ans_values = np.array(list(ans.values()))
-    test_ts_values = np.array(list(test_ts.values()))
+    test_ts_values = np.array(test_ts.values)
     error0 = error_func(ans_values, test_ts_values).reshape(-1)
 
     risk0 = shift_model.fit(result_df, error0)
@@ -81,13 +80,13 @@ def plot_pair_wcr(
 
 
 def plot_test_wcr(
-    ans, shift_model, test_ts, result_df, error_func=lambda x, y: (x - y) ** 2
+    ans_values, shift_model, test_ts, result_df, error_func=lambda x, y: (x - y) ** 2
 ):
     """
     Plot the weighted conditional risks (WCR) for test data using a shift model.
 
     Parameters:
-    ans (dict): Dictionary containing answers or true values.
+    ans: np_array.
     shift_model (model): Model that can fit data and calculate risk based on specified errors.
     test_ts (dict): Dictionary containing test time series data.
     result_df (DataFrame): DataFrame containing the results data.
@@ -96,8 +95,7 @@ def plot_test_wcr(
     Returns:
     None: This function plots the WCR for test data and does not return any value.
     """
-    ans_values = np.array(list(ans.values()))
-    test_ts_values = np.array(list(test_ts.values()))
+    test_ts_values = np.array(test_ts)
     error0 = error_func(ans_values, test_ts_values).reshape(-1)
 
     risk0 = shift_model.fit(result_df, error0)
@@ -113,7 +111,7 @@ def plot_test_wcr(
 
 
 def plot_fake_wcr(
-    ans, shift_model, fake_data, col, error_func=lambda x, y: (x - y) ** 2
+    ans_values, shift_model, fake_data, col, error_func=lambda x, y: (x - y) ** 2
 ):
     """
     Plot the weighted conditional risks (WCR) for fake data using a shift model.
@@ -128,7 +126,6 @@ def plot_fake_wcr(
     Returns:
     None: This function plots the WCR for fake data and does not return any value.
     """
-    ans_values = np.array(list(ans.values()))
 
     errors = []
     for fake in fake_data:

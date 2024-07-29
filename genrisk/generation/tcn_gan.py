@@ -67,6 +67,7 @@ class TCNGAN(TorchGenerator):
             num_layers: int=2,
             kernel_size: int=3,
             lr: float=0.001,
+            loss_type: str="Wasseerstein",
         ):
         """
         Args:
@@ -98,13 +99,8 @@ class TCNGAN(TorchGenerator):
         self.num_layers = num_layers
         self.kernel_size = kernel_size
         self.lr = lr
+        self.loss_type = loss_type
 
-    def fit(self, data: pd.DataFrame):
-        """Fit the generator
-        
-        Args:
-            data (pd.DataFrame): A dataframe with time series data.
-        """
         gen = _TCNGenerator(
             self.latent_dim, 
             len(self.conditional_columns),
@@ -126,5 +122,31 @@ class TCNGAN(TorchGenerator):
             latent_dim=self.latent_dim,
             lr=self.lr,
             num_disc_steps=self.num_disc_steps,
+            loss_type=self.loss_type,
         )
+
+    def fit(self, data: pd.DataFrame):
+        """Fit the generator
+        
+        Args:
+            data (pd.DataFrame): A dataframe with time series data.
+        """
         super().fit(data)
+
+    def save_model(self, path):
+        """Save the model to a file.
+
+        Args:
+            path (str): The path where the model will be saved.
+        """
+        # print(self.model.state_dict())
+        torch.save(self.model.state_dict(), path)
+
+    def load_model(self, path):
+        """Load the model from a file.
+
+        Args:
+            path (str): The path where the model is saved.
+        """
+        # print(torch.load(path))
+        self.model.load_state_dict(torch.load(path))
