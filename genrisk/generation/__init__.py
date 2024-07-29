@@ -3,6 +3,7 @@ from genrisk.generation.lstm_vae import LSTMVAE
 from genrisk.generation.lstm_gan import LSTMGAN
 from genrisk.generation.tcn_vae import TCNVAE
 from genrisk.generation.tcn_gan import TCNGAN
+from genrisk.generation.lstm import LSTM
 from genrisk.generation.base import BaseGenerator, TorchGenerator
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     'LSTMGAN',
     'TCNVAE',
     'TCNGAN',
+    'LSTM'
 ]
