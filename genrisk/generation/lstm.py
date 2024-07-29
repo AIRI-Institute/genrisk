@@ -5,7 +5,41 @@ from torch import nn
 from torch.optim import Adam
 
 from genrisk.generation.base import TorchGenerator
-from genrisk.generation.lstm_gan import _LSTMGenerator
+
+
+class _RandomLSTMGenerator(nn.Module):
+    __using_hx = False
+
+    def __init__(self, latent_dim, condition_dim, hidden_dim, target_dim, num_layers, butch_size):
+        super().__init__()
+        self.rnn = nn.LSTM(latent_dim + condition_dim, hidden_dim, num_layers, batch_first=True)
+        self.projection = nn.Linear(hidden_dim, target_dim)
+        self.latent_dim = latent_dim
+        self.target_dim = target_dim
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+        self.butch_size = butch_size
+        self.h_0 = None
+        self.c_0 = None
+
+    def forward(self, z, cond):
+        z_cond = torch.cat([z, cond], dim=2)
+        if self.__using_hx and self.h_0 is None:
+            self.h_0 = torch.randn(self.num_layers, z.shape[0], self.hidden_dim)
+            self.c_0 = torch.randn(self.num_layers, z.shape[0], self.hidden_dim)
+
+        if self.h_0 is not None:
+            output, (self.h_0, self.c_0) = self.rnn(z_cond, (self.h_0, self.c_0))
+        else:
+            output, _ = self.rnn(z_cond)
+
+        fake = self.projection(output)
+        return fake
+
+    def set_using_hx(self, flag: bool):
+        self.__using_hx = flag
+        if not flag:
+            self.h_0 = self.c_0 = None
 
 
 class LSTMModule(LightningModule):
@@ -13,7 +47,7 @@ class LSTMModule(LightningModule):
             self, gen, latent_dim, lr, num_disc_steps,
     ):
         super().__init__()
-        self.gen: _LSTMGenerator = gen
+        self.gen: _RandomLSTMGenerator = gen
         self.latent_dim = latent_dim
         self.automatic_optimization = False
         self.lr = lr
@@ -49,6 +83,7 @@ class LSTMModule(LightningModule):
             self.device)
         z = torch.randn(n_samples, seq_len, self.latent_dim, device=self.device)
         with torch.no_grad():
+            self.gen.set_using_hx(True)
             fake = self.gen(z, cond).cpu().numpy()
         return fake
 
@@ -97,16 +132,14 @@ class LSTM(TorchGenerator):
         self.num_layers = num_layers
         self.lr = lr
 
-    # def sample(self, data: pd.DataFrame, n_samples: int) -> list[pd.DataFrame]:
-    #     pass
-
     def fit(self, data: pd.DataFrame):
-        gen = _LSTMGenerator(
+        gen = _RandomLSTMGenerator(
             latent_dim=self.latent_dim,
             condition_dim=len(self.conditional_columns),
             hidden_dim=self.hidden_dim,
             target_dim=len(self.target_columns),
             num_layers=self.num_layers,
+            butch_size=self.batch_size
         )
         self.model = LSTMModule(
             gen=gen,
