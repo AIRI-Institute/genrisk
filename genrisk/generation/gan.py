@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 
 class GANModule(LightningModule):
     def __init__(
-        self, gen, disc, latent_dim, lr, num_disc_steps,
+        self, gen, disc, latent_dim, lr, num_disc_steps, loss_type,
     ):
         super().__init__()
         self.gen = gen
@@ -14,15 +14,22 @@ class GANModule(LightningModule):
         self.automatic_optimization = False
         self.lr = lr
         self.num_disc_steps = num_disc_steps
+        self.loss_type = loss_type
 
     def disc_loss(self, real_logits, fake_logits):
-        real_is_real = torch.log(torch.sigmoid(real_logits) + 1e-10)
-        fake_is_fake = torch.log(1 - torch.sigmoid(fake_logits) + 1e-10)
-        return -(real_is_real + fake_is_fake).mean() / 2
-    
+        if self.loss_type == "BCE": 
+            real_is_real = torch.log(torch.sigmoid(real_logits) + 1e-10)
+            fake_is_fake = torch.log(1 - torch.sigmoid(fake_logits) + 1e-10)
+            return -(real_is_real + fake_is_fake).mean() / 2
+        if self.loss_type == "Wasseerstein":
+            return fake_logits.mean() - real_logits.mean()
+
     def gen_loss(self, fake_logits):
-        fake_is_real = torch.log(torch.sigmoid(fake_logits) + 1e-10)
-        return -fake_is_real.mean()
+        if self.loss_type == "BCE":
+            fake_is_real = torch.log(torch.sigmoid(fake_logits) + 1e-10)
+            return -fake_is_real.mean()
+        if self.loss_type == "Wasseerstein":
+            return -fake_logits.mean()
 
     def training_step(self, batch, batch_idx):
         gen_opt, disc_opt = self.optimizers()

@@ -47,6 +47,7 @@ class LSTMGAN(TorchGenerator):
             num_disc_steps: int=1,
             num_layers: int=1,
             lr: float=0.01,
+            loss_type: str="Wasseerstein",
         ):
         """
         Args:
@@ -76,13 +77,8 @@ class LSTMGAN(TorchGenerator):
         self.num_disc_steps = num_disc_steps
         self.num_layers = num_layers
         self.lr = lr
+        self.loss_type = loss_type
 
-    def fit(self, data: pd.DataFrame):
-        """Fit the generator
-        
-        Args:
-            data (pd.DataFrame): A dataframe with time series data.
-        """
         gen = _LSTMGenerator(
             latent_dim=self.latent_dim, 
             condition_dim=len(self.conditional_columns), 
@@ -102,5 +98,31 @@ class LSTMGAN(TorchGenerator):
             latent_dim=self.latent_dim,
             lr=self.lr,
             num_disc_steps=self.num_disc_steps,
+            loss_type=self.loss_type
         )
+
+    def fit(self, data: pd.DataFrame):
+        """Fit the generator
+        
+        Args:
+            data (pd.DataFrame): A dataframe with time series data.
+        """
         super().fit(data)
+
+    def save_model(self, path):
+        """Save the model to a file.
+
+        Args:
+            path (str): The path where the model will be saved.
+        """
+        # print(self.model.state_dict())
+        torch.save(self.model.state_dict(), path)
+
+    def load_model(self, path):
+        """Load the model from a file.
+
+        Args:
+            path (str): The path where the model is saved.
+        """
+        # print(torch.load(path))
+        self.model.load_state_dict(torch.load(path))

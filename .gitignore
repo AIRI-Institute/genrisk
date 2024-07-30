@@ -1,0 +1,5 @@
+**/forecasting_models/
+**/generation_models/
+**/*.pkl
+**/__pycache__/
+**/todo.md
