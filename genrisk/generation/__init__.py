@@ -1,3 +1,4 @@
+from genrisk.generation.conv2d_gan import Conv2dGAN
 from genrisk.generation.vector_ar import VectorAR
 from genrisk.generation.lstm_vae import LSTMVAE
 from genrisk.generation.lstm_gan import LSTMGAN
@@ -9,6 +10,7 @@ from genrisk.generation.base import BaseGenerator, TorchGenerator
 __all__ = [
     'BaseGenerator',
     'TorchGenerator',
+    'Conv2dGAN',
     'VectorAR',
     'LSTMVAE',
     'LSTMGAN',
