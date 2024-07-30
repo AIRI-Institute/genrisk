@@ -44,7 +44,7 @@ class DenoisingDiffusion(nn.Module):
 
     def fit(self, train_data):
         train_dataset = self._prepare_data(train_data)
-        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+        train_loader = DataLoader(train_dataset, batch_size=32, shuffle=False)
         
         for epoch in range(self.num_epochs):
             epoch_loss = 0
