@@ -1,5 +1,5 @@
 import torch
-from torch.optim import SGD
+from torch.optim import RMSprop
 from pytorch_lightning import LightningModule
 
 
@@ -52,8 +52,8 @@ class GANModule(LightningModule):
         self.log_dict({'train_gen_loss': g_loss, 'train_disc_loss': d_loss}, prog_bar=True)
 
     def configure_optimizers(self):
-        gen_opt = SGD(self.gen.parameters(), lr=self.lr)
-        disc_opt = SGD(self.disc.parameters(), lr=self.lr)
+        gen_opt = RMSprop(self.gen.parameters(), lr=self.lr)
+        disc_opt = RMSprop(self.disc.parameters(), lr=self.lr)
         return gen_opt, disc_opt
 
     def sample(self, cond, seq_len, n_samples):
