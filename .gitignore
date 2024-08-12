@@ -1,0 +1,5 @@
+.DS_Store
+.vscode/settings.json
+**/.ipynb_checkpoints/
+**/__pycache__/
+lightning_logs/*
