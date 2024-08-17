@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from torch.utils.data import DataLoader
 from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import CSVLogger
+from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 from genrisk.generation.utils import SlidingWindowDataset
 import warnings
@@ -78,6 +79,7 @@ class TorchGenerator(BaseGenerator, ABC):
         self.num_epochs = num_epochs
         self.verbose = verbose
         self.model = None
+        self.scaler = MinMaxScaler()
 
     @abstractmethod
     def fit(self, data: pd.DataFrame):
@@ -86,6 +88,9 @@ class TorchGenerator(BaseGenerator, ABC):
         Args:
             data (pd.DataFrame): A dataframe with time series data.
         """
+        data = data.copy()
+        data[self.target_columns] = self.scaler.fit_transform(data[self.target_columns])
+
         self.dataset = SlidingWindowDataset(
             df=data,
             target_columns=self.target_columns,
@@ -126,5 +131,10 @@ class TorchGenerator(BaseGenerator, ABC):
         target_fakes = []
         for fake in _fake:
             fake_df = pd.DataFrame(fake, index=data.index, columns=self.target_columns)
+            fake_df = pd.DataFrame(
+                self.scaler.inverse_transform(fake_df[self.target_columns]), 
+                index=data.index, 
+                columns=self.target_columns
+            )
             target_fakes.append(fake_df)
         return super().postprocess_fake(data, target_fakes)
