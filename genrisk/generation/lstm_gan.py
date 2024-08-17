@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pandas as pd
+from typing import Literal
 
 from genrisk.generation.base import TorchGenerator
 from genrisk.generation.gan import GANModule
@@ -47,6 +48,7 @@ class LSTMGAN(TorchGenerator):
             num_disc_steps: int=1,
             num_layers: int=1,
             lr: float=0.01,
+            loss_type: Literal["Wasserstein", "BCE"] = "Wasserstein",
         ):
         """
         Args:
@@ -62,6 +64,9 @@ class LSTMGAN(TorchGenerator):
                 for one step of training a generator.
             num_layers (int): The number of layers in LSTM module.
             lr (int): The learning rate to train the generator.
+            loss_type (str): The type of loss function to use. Options are
+            "Wasserstein" for Wasserstein loss or "BCE" for Binary Cross-Entropy loss.
+            If any other value is provided, a ValueError will be raised.
         """
         super().__init__(
             target_columns,
@@ -76,16 +81,11 @@ class LSTMGAN(TorchGenerator):
         self.num_disc_steps = num_disc_steps
         self.num_layers = num_layers
         self.lr = lr
+        self.loss_type = loss_type
 
-    def fit(self, data: pd.DataFrame):
-        """Fit the generator
-        
-        Args:
-            data (pd.DataFrame): A dataframe with time series data.
-        """
         gen = _LSTMGenerator(
-            latent_dim=self.latent_dim, 
-            condition_dim=len(self.conditional_columns), 
+            latent_dim=self.latent_dim,
+            condition_dim=len(self.conditional_columns),
             hidden_dim=self.hidden_dim,
             target_dim=len(self.target_columns),
             num_layers=self.num_layers,
@@ -102,5 +102,31 @@ class LSTMGAN(TorchGenerator):
             latent_dim=self.latent_dim,
             lr=self.lr,
             num_disc_steps=self.num_disc_steps,
+            loss_type=self.loss_type
         )
+
+    def fit(self, data: pd.DataFrame):
+        """Fit the generator
+
+        Args:
+            data (pd.DataFrame): A dataframe with time series data.
+        """
         super().fit(data)
+
+    def save_model(self, path):
+        """Save the model to a file.
+
+        Args:
+            path (str): The path where the model will be saved.
+        """
+        # print(self.model.state_dict())
+        torch.save(self.model.state_dict(), path)
+
+    def load_model(self, path):
+        """Load the model from a file.
+
+        Args:
+            path (str): The path where the model is saved.
+        """
+        # print(torch.load(path))
+        self.model.load_state_dict(torch.load(path))
