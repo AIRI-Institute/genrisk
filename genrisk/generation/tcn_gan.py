@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import pandas as pd
+from typing import Literal
 
 from genrisk.generation.base import TorchGenerator
 from genrisk.generation.gan import GANModule
@@ -67,6 +68,7 @@ class TCNGAN(TorchGenerator):
             num_layers: int=2,
             kernel_size: int=3,
             lr: float=0.001,
+            loss_type: Literal["Wasserstein", "BCE"] = "Wasserstein",
         ):
         """
         Args:
@@ -83,6 +85,9 @@ class TCNGAN(TorchGenerator):
             num_layers (int): The number of layers in TCN module.
             kernel_size (int): The kernel size in TCN module.
             lr (int): The learning rate to train the generator.
+            loss_type (str): The type of loss function to use. Options are
+            "Wasserstein" for Wasserstein loss or "BCE" for Binary Cross-Entropy loss.
+            If any other value is provided, a ValueError will be raised.
         """
         super().__init__(
             target_columns, 
@@ -98,26 +103,21 @@ class TCNGAN(TorchGenerator):
         self.num_layers = num_layers
         self.kernel_size = kernel_size
         self.lr = lr
+        self.loss_type = loss_type
 
-    def fit(self, data: pd.DataFrame):
-        """Fit the generator
-        
-        Args:
-            data (pd.DataFrame): A dataframe with time series data.
-        """
         gen = _TCNGenerator(
-            self.latent_dim, 
+            self.latent_dim,
             len(self.conditional_columns),
-            self.kernel_size, 
-            self.hidden_dim, 
-            len(self.target_columns), 
+            self.kernel_size,
+            self.hidden_dim,
+            len(self.target_columns),
             self.num_layers
         )
         disc = _TCNDiscriminator(
-            len(self.target_columns), 
+            len(self.target_columns),
             len(self.conditional_columns),
-            self.kernel_size, 
-            self.hidden_dim, 
+            self.kernel_size,
+            self.hidden_dim,
             self.num_layers,
         )
         self.model = GANModule(
@@ -126,5 +126,31 @@ class TCNGAN(TorchGenerator):
             latent_dim=self.latent_dim,
             lr=self.lr,
             num_disc_steps=self.num_disc_steps,
+            loss_type=self.loss_type,
         )
+
+    def fit(self, data: pd.DataFrame):
+        """Fit the generator
+
+        Args:
+            data (pd.DataFrame): A dataframe with time series data.
+        """
         super().fit(data)
+
+    def save_model(self, path):
+        """Save the model to a file.
+
+        Args:
+            path (str): The path where the model will be saved.
+        """
+        # print(self.model.state_dict())
+        torch.save(self.model.state_dict(), path)
+
+    def load_model(self, path):
+        """Load the model from a file.
+
+        Args:
+            path (str): The path where the model is saved.
+        """
+        # print(torch.load(path))
+        self.model.load_state_dict(torch.load(path))
