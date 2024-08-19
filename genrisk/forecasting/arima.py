@@ -3,7 +3,7 @@ from pmdarima import auto_arima
 import numpy as np
 import matplotlib.pyplot as plt
 
-from base import BaseModelHandler
+from .base import BaseModelHandler
 
 plt.style.use('default')
 plt.rcParams['axes.grid'] = False

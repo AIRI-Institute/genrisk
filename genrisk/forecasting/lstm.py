@@ -2,7 +2,7 @@ from darts.models import RNNModel
 import logging
 import matplotlib.pyplot as plt
 
-from base import BaseModelHandler
+from .base import BaseModelHandler
 
 plt.style.use('default')
 plt.rcParams['axes.grid'] = False
