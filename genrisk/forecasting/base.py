@@ -25,7 +25,6 @@ my_stopper = EarlyStopping(
 
 class BaseModelHandler(ABC):
     def __init__(self, train, test,
-                 test_percent,
                  forecasting_horizont,
                  target_columns,
                  conditional_columns):
@@ -33,7 +32,6 @@ class BaseModelHandler(ABC):
         self.df_train = train
         self.df_test = test
 
-        self.test_percent = test_percent
         self.forecasting_horizont = forecasting_horizont
         self.target_columns = target_columns
         self.conditional_columns = conditional_columns

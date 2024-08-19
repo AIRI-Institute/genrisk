@@ -10,9 +10,9 @@ plt.rcParams['axes.grid'] = False
 
 
 class ARIMAModelHandler(BaseModelHandler):
-    def __init__(self, train, test, test_percent, forecasting_horizont, target_columns, conditional_columns,
+    def __init__(self, train, test, forecasting_horizont, target_columns, conditional_columns,
                  params=None):
-        super().__init__(train, test, test_percent, forecasting_horizont, target_columns, conditional_columns)
+        super().__init__(train, test, forecasting_horizont, target_columns, conditional_columns)
         if params is None:
             params = {
                 "p": (0, 2),

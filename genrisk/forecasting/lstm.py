@@ -11,14 +11,14 @@ plt.rcParams['axes.grid'] = False
 class LSTMModelHandler(BaseModelHandler):
     def __init__(
             self,
-            train, test, test_percent, forecasting_horizont, target_columns, conditional_columns,
+            train, test, forecasting_horizont, target_columns, conditional_columns,
             input_chunk_length=100,
             n_rnn_layers=1,
             n_epochs=20,
             dropout=0.0,
 
     ):
-        super().__init__(train, test, test_percent, forecasting_horizont, target_columns, conditional_columns)
+        super().__init__(train, test, forecasting_horizont, target_columns, conditional_columns)
         self.input_chunk_length = input_chunk_length
         self.n_rnn_layers = n_rnn_layers
         self.n_epochs = n_epochs

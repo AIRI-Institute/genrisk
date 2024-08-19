@@ -11,13 +11,13 @@ plt.rcParams['axes.grid'] = False
 class TFTModelHandler(BaseModelHandler):
     def __init__(
             self,
-            train, test, test_percent, forecasting_horizont, target_columns, conditional_columns,
+            train, test, forecasting_horizont, target_columns, conditional_columns,
             input_chunk_length=100,
             forcasting_horizon=24,
             n_epochs=20,
             dropout=0.0,
     ):
-        super().__init__(train, test, test_percent, forecasting_horizont, target_columns, conditional_columns)
+        super().__init__(train, test, forecasting_horizont, target_columns, conditional_columns)
         self.input_chunk_length = input_chunk_length
         self.forcasting_horizon = forcasting_horizon
         self.n_epochs = n_epochs
